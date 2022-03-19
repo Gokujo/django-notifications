@@ -28,7 +28,6 @@ if StrictVersion(get_version()) >= StrictVersion('1.8.0'):
 else:
     from django.contrib.contenttypes.generic import GenericForeignKey  # noqa
 
-
 EXTRA_DATA = notifications_settings.get_config()['USE_JSONFIELD']
 
 
@@ -47,6 +46,7 @@ def assert_soft_delete():
 
 class NotificationQuerySet(models.query.QuerySet):
     ''' Notification QuerySet '''
+
     def unsent(self):
         return self.filter(emailed=False)
 
@@ -170,48 +170,68 @@ class AbstractNotification(models.Model):
         <a href="http://oebfare.com/">brosner</a> commented on <a href="http://github.com/pinax/pinax">pinax/pinax</a> 2 hours ago # noqa
 
     """
-    LEVELS = Choices('success', 'info', 'warning', 'error')
-    level = models.CharField(verbose_name=_('Level'), choices=LEVELS, default=LEVELS.info, max_length=20)
+    LEVELS = Choices(
+        ('success', _('success')),
+         ('info', _('info')),
+         ('warning', _('warning')),
+         ('error', _('error'))
+    )
+    level = models.CharField(_('level'), choices=LEVELS, default=LEVELS.info, max_length=20)
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        blank=False,
-        related_name='notifications',
         on_delete=models.CASCADE,
-        verbose_name=_('Recipient')
+        related_name='notifications',
+        verbose_name=_('recipient'),
+        blank=False,
     )
-    unread = models.BooleanField(verbose_name=_('Unread'), default=True, blank=False, db_index=True)
+    unread = models.BooleanField(_('unread'), default=True, blank=False, db_index=True)
 
-    actor_content_type = models.ForeignKey(ContentType, verbose_name=_('Actor content type'), related_name='notify_actor', on_delete=models.CASCADE)
-    actor_object_id = models.CharField(verbose_name=_('Actor object id'), max_length=255)
+    actor_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name='notify_actor',
+        verbose_name=_('actor content type')
+    )
+    actor_object_id = models.CharField(_('actor object id'), max_length=255)
     actor = GenericForeignKey('actor_content_type', 'actor_object_id')
+    actor.short_description = _('actor')
 
-    verb = models.CharField(verbose_name=_('Verb'), max_length=255)
-    description = models.TextField(verbose_name=_('Description'), blank=True, null=True)
+    verb = models.CharField(_('verb'), max_length=255)
+    description = models.TextField(_('description'), blank=True, null=True)
 
     target_content_type = models.ForeignKey(
         ContentType,
-        verbose_name=_('Target content type'),
+        on_delete=models.CASCADE,
         related_name='notify_target',
+        verbose_name=_('target content type'),
         blank=True,
-        null=True,
-        on_delete=models.CASCADE
+        null=True
     )
-    target_object_id = models.CharField(verbose_name=_('Target object id'), max_length=255, blank=True, null=True)
+    target_object_id = models.CharField(_('target object id'), max_length=255, blank=True, null=True)
     target = GenericForeignKey('target_content_type', 'target_object_id')
+    target.short_description = _('target')
 
-    action_object_content_type = models.ForeignKey(ContentType, verbose_name=_('Action object content type'), blank=True, null=True,
-                                                   related_name='notify_action_object', on_delete=models.CASCADE)
-    action_object_object_id = models.CharField(verbose_name=_('Action object object id'), max_length=255, blank=True, null=True)
+    action_object_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name='notify_action_object',
+        verbose_name=_('action object content type'),
+        blank=True,
+        null=True
+    )
+    action_object_object_id = models.CharField(_('action object object id'), max_length=255, blank=True, null=True)
     action_object = GenericForeignKey('action_object_content_type', 'action_object_object_id')
+    action_object.short_description = _('action object')
 
-    timestamp = models.DateTimeField(verbose_name=_('Timestamp'), default=timezone.now, db_index=True)
+    timestamp = models.DateTimeField(_('timestamp'), default=timezone.now, db_index=True)
 
-    public = models.BooleanField(verbose_name=_('Public'), default=True, db_index=True)
-    deleted = models.BooleanField(verbose_name=_('Deleted'), default=False, db_index=True)
-    emailed = models.BooleanField(verbose_name=_('Emailed'), default=False, db_index=True)
+    public = models.BooleanField(_('public'), default=True, db_index=True)
+    deleted = models.BooleanField(_('deleted'), default=False, db_index=True)
+    emailed = models.BooleanField(_('emailed'), default=False, db_index=True)
 
-    data = JSONField(verbose_name=_('Data'), blank=True, null=True)
+    data = JSONField(_('data'), blank=True, null=True)
+
     objects = NotificationQuerySet.as_manager()
 
     class Meta:
@@ -232,11 +252,11 @@ class AbstractNotification(models.Model):
         }
         if self.target:
             if self.action_object:
-                return u'%(actor)s %(verb)s %(action_object)s on %(target)s %(timesince)s ago' % ctx
-            return u'%(actor)s %(verb)s %(target)s %(timesince)s ago' % ctx
+                return _('%(actor)s %(verb)s %(action_object)s on %(target)s %(timesince)s ago') % ctx
+            return _('%(actor)s %(verb)s %(target)s %(timesince)s ago') % ctx
         if self.action_object:
-            return u'%(actor)s %(verb)s %(action_object)s %(timesince)s ago' % ctx
-        return u'%(actor)s %(verb)s %(timesince)s ago' % ctx
+            return _('%(actor)s %(verb)s %(action_object)s %(timesince)s ago') % ctx
+        return _('%(actor)s %(verb)s %(timesince)s ago') % ctx
 
     def timesince(self, now=None):
         """
