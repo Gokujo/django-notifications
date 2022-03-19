@@ -18,6 +18,10 @@ from notifications import settings as notifications_settings
 from notifications.signals import notify
 from notifications.utils import id2slug
 from swapper import load_model
+try:
+    from django.utils.translation import gettext_lazy as _
+except TypeError: # Django 4.x
+    from django.utils.translation import ugettext_lazy as _
 
 if StrictVersion(get_version()) >= StrictVersion('1.8.0'):
     from django.contrib.contenttypes.fields import GenericForeignKey  # noqa
@@ -167,45 +171,47 @@ class AbstractNotification(models.Model):
 
     """
     LEVELS = Choices('success', 'info', 'warning', 'error')
-    level = models.CharField(choices=LEVELS, default=LEVELS.info, max_length=20)
+    level = models.CharField(verbose_name=_('Level'), choices=LEVELS, default=LEVELS.info, max_length=20)
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=False,
         related_name='notifications',
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        verbose_name=_('Recipient')
     )
-    unread = models.BooleanField(default=True, blank=False, db_index=True)
+    unread = models.BooleanField(verbose_name=_('Unread'), default=True, blank=False, db_index=True)
 
-    actor_content_type = models.ForeignKey(ContentType, related_name='notify_actor', on_delete=models.CASCADE)
-    actor_object_id = models.CharField(max_length=255)
+    actor_content_type = models.ForeignKey(ContentType, verbose_name=_('Actor content type'), related_name='notify_actor', on_delete=models.CASCADE)
+    actor_object_id = models.CharField(verbose_name=_('Actor object id'), max_length=255)
     actor = GenericForeignKey('actor_content_type', 'actor_object_id')
 
-    verb = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
+    verb = models.CharField(verbose_name=_('Verb'), max_length=255)
+    description = models.TextField(verbose_name=_('Description'), blank=True, null=True)
 
     target_content_type = models.ForeignKey(
         ContentType,
+        verbose_name=_('Target content type'),
         related_name='notify_target',
         blank=True,
         null=True,
         on_delete=models.CASCADE
     )
-    target_object_id = models.CharField(max_length=255, blank=True, null=True)
+    target_object_id = models.CharField(verbose_name=_('Target object id'), max_length=255, blank=True, null=True)
     target = GenericForeignKey('target_content_type', 'target_object_id')
 
-    action_object_content_type = models.ForeignKey(ContentType, blank=True, null=True,
+    action_object_content_type = models.ForeignKey(ContentType, verbose_name=_('Action object content type'), blank=True, null=True,
                                                    related_name='notify_action_object', on_delete=models.CASCADE)
-    action_object_object_id = models.CharField(max_length=255, blank=True, null=True)
+    action_object_object_id = models.CharField(verbose_name=_('Action object object id'), max_length=255, blank=True, null=True)
     action_object = GenericForeignKey('action_object_content_type', 'action_object_object_id')
 
-    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
+    timestamp = models.DateTimeField(verbose_name=_('Timestamp'), default=timezone.now, db_index=True)
 
-    public = models.BooleanField(default=True, db_index=True)
-    deleted = models.BooleanField(default=False, db_index=True)
-    emailed = models.BooleanField(default=False, db_index=True)
+    public = models.BooleanField(verbose_name=_('Public'), default=True, db_index=True)
+    deleted = models.BooleanField(verbose_name=_('Deleted'), default=False, db_index=True)
+    emailed = models.BooleanField(verbose_name=_('Emailed'), default=False, db_index=True)
 
-    data = JSONField(blank=True, null=True)
+    data = JSONField(verbose_name=_('Data'), blank=True, null=True)
     objects = NotificationQuerySet.as_manager()
 
     class Meta:
@@ -213,6 +219,8 @@ class AbstractNotification(models.Model):
         ordering = ('-timestamp',)
         # speed up notifications count query
         index_together = ('recipient', 'unread')
+        verbose_name = _('Notification')
+        verbose_name_plural = _('Notifications')
 
     def __str__(self):
         ctx = {
